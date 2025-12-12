@@ -1,1 +1,14 @@
-"*.bin*.sod*.zcos~results/*.pngresults/*.jpg" 
+# Fichiers de sauvegarde de l'éditeur (fichiers temporaires)
+*~
+*.bak
+
+# Fichiers de Scilab/Xcos
+*.bin
+*.sod
+*.zcos
+*.cosf
+
+# Fichiers de résultats (images et sorties)
+results/
+*.png
+*.jpg
