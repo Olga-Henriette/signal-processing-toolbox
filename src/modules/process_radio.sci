@@ -1,5 +1,5 @@
 // =========================================================================
-// Traitement du theme liaison radio (Modulation OOK)
+// Liaison radio OOK
 // =========================================================================
 function process_radio_module()
     global app_state;
@@ -7,21 +7,16 @@ function process_radio_module()
     disp('Debut traitement liaison radio...');
         
     try
-        // Récupérer les paramètres du module 'radio'
         module_config = app_state.modules.radio;
         parameters = module_config.default_params;
         
-        sampling_frequency = 22050; // fe
-        sampling_period = 1/sampling_frequency; // Te
+        sampling_frequency = 22050;
+        sampling_period = 1/sampling_frequency;
         
         disp('Generation du message binaire...');
-        
-        // Binary message 
         transmitted_bits = round(rand(1, parameters.number_of_bits));
         
         disp('Modulation OOK...');
-        
-        // OOK Modulation 
         modulation_duration = parameters.number_of_bits * parameters.bit_duration_s;
         modulation_time = 0:sampling_period:(modulation_duration - sampling_period);
         modulated_signal = zeros(1, length(modulation_time));
@@ -38,11 +33,8 @@ function process_radio_module()
         end
         
         disp('Ajout du bruit de canal...');
-        
-        // Noisy channel (Canal bruite)
         signal_power = mean(modulated_signal.^2);
         
-        // Calculate noise power based on SNR 
         if signal_power > 0 then
             noise_power = signal_power / (10^(parameters.snr_db/10));
         else
@@ -53,48 +45,41 @@ function process_radio_module()
         received_signal = modulated_signal + channel_noise;
         
         disp('Demodulation...');
-        
-        // Demodulation 
         demodulated_signal = received_signal .* sin(2*%pi*carrier_frequency*modulation_time);
         
-        // Low-pass filter (Filtre passe-bas)
+        // Filtre passe-bas simple dans le domaine fréquentiel
+        disp('Filtrage passe-bas...');
         cutoff_frequency = 50;
-        // Normalisation par la fréquence de Nyquist (fe/2)
-        lowpass_filter_coeffs = iir(6, 'lp', 'butt', cutoff_frequency/(sampling_frequency/2), 0.1); 
-        filtered_signal = flts(demodulated_signal, lowpass_filter_coeffs);
+        filtered_signal = lowpass_filter_fft(demodulated_signal, sampling_frequency, cutoff_frequency);
         
         disp('Decision binaire...');
-        
-        // Decision binaire
         received_bits = zeros(1, parameters.number_of_bits);
-        decision_threshold = 0.1;
+        decision_threshold = max(filtered_signal) * 0.3;
         
         for i = 1:parameters.number_of_bits
             bit_start_time = (i-1) * parameters.bit_duration_s;
             bit_end_time = i * parameters.bit_duration_s;
             bit_indices = find(modulation_time >= bit_start_time & modulation_time < bit_end_time);
-            sample_index = round(mean(bit_indices)); // Échantillonnage au milieu du bit
+            sample_index = round(mean(bit_indices));
             
-            if filtered_signal(sample_index) > decision_threshold then
+            if sample_index <= length(filtered_signal) & filtered_signal(sample_index) > decision_threshold then
                 received_bits(i) = 1;
             end
         end
         
-        // BER calculation
+        // Calcul BER
         errors = sum(transmitted_bits ~= received_bits);
-        bit_error_rate = errors / parameters.number_of_bits; // BER
+        bit_error_rate = errors / parameters.number_of_bits;
         
         disp('Affichage des graphiques...');
-        
-        // Display
         show_radio_results(transmitted_bits, received_bits, modulated_signal, filtered_signal, modulation_time, parameters, bit_error_rate);
         
         // Interpretation
         if bit_error_rate == 0 then
-            interpretation_text = sprintf('Transmission parfaite ! Les %d bits ont ete recus sans erreur (BER = 0%%). SNR: %.1f dB.', ...
+            interpretation_text = sprintf('    Transmission parfaite ! Les %d bits ont été reçus sans erreur (BER = 0%%). SNR: %.1f dB.', ...
                             parameters.number_of_bits, parameters.snr_db);
         else
-            interpretation_text = sprintf('%d erreur(s) sur %d bits (BER = %.1f%%). Augmentez le SNR (%.1f dB) pour ameliorer la fiabilite.', ...
+            interpretation_text = sprintf('    %d erreur(s) sur %d bits (BER = %.1f%%). Augmentez le SNR (actuellement %.1f dB) pour améliorer la transmission.', ...
                             errors, parameters.number_of_bits, bit_error_rate*100, parameters.snr_db);
         end
         
@@ -106,6 +91,33 @@ function process_radio_module()
         disp('ERREUR dans process_radio_module');
         err = lasterror();
         disp('Message : ' + err.message);
-        update_interpretation_zone('Erreur lors du traitement radio. Voir console.');
+        disp('Details de l''erreur :');
+        for i = 1:size(err.stack, 1)
+            disp('  Ligne ' + string(err.stack(i).line) + ' dans ' + err.stack(i).name);
+        end
+        update_interpretation_zone('    Erreur lors du traitement radio. Voir console pour détails.');
     end
+endfunction
+
+function filtered_signal = lowpass_filter_fft(input_signal, sampling_frequency, cutoff_frequency)
+    // Filtre passe-bas dans le domaine fréquentiel
+    N = length(input_signal);
+    X = fft(input_signal);
+    freq = (0:N-1) * sampling_frequency / N;
+    
+    // Créer un masque fréquentiel
+    mask = zeros(1, N);
+    for i = 1:N
+        if freq(i) <= cutoff_frequency then
+            mask(i) = 1;
+        elseif freq(i) >= (sampling_frequency - cutoff_frequency) then
+            mask(i) = 1; // Fréquences négatives (miroir)
+        end
+    end
+    
+    // Appliquer le masque
+    X_filtered = X .* mask;
+    
+    // IFFT
+    filtered_signal = real(ifft(X_filtered));
 endfunction

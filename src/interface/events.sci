@@ -2,7 +2,6 @@
 // Gestion des evenements utilisateur
 // =========================================================================
 
-// --- Fonction Helper pour accéder aux modules ---
 function module_config = get_module_config(theme_key)
     global app_state;
     
@@ -22,7 +21,6 @@ function module_config = get_module_config(theme_key)
     end
 endfunction
 
-// --- Fonction Helper pour modifier un module ---
 function set_module_config(theme_key, module_config)
     global app_state;
     
@@ -54,15 +52,15 @@ function event_theme_change()
         popup_handle = app_state.ui_elements.popup_theme;
         selected_index = get(popup_handle, 'value');
         
-        // Mettre à jour la clé du thème actuel
         app_state.current_theme_key = app_state.theme_keys(selected_index); 
         
-        // Afficher les paramètres du nouveau thème
         display_theme_parameters_dynamic(app_state.current_theme_key);
         
-        update_interpretation_zone('Theme modifie. Ajustez les parametres puis cliquez sur GENERER.');
+        update_interpretation_zone('    Theme modifie. Ajustez les parametres puis cliquez sur GENERER.');
     catch
         disp('Erreur dans event_theme_change');
+        err = lasterror();
+        disp('Message : ' + err.message);
     end
 endfunction
 
@@ -74,19 +72,27 @@ function event_generate_results()
         current_key = app_state.current_theme_key;
         disp('Theme actuel : ' + current_key);
         
-        // 1. Lire les paramètres entrés par l'utilisateur
+        // 1. Lire les paramètres
         read_interface_parameters(); 
         
-        update_interpretation_zone('Generation en cours...');
+        update_interpretation_zone('    Generation en cours...');
         
-        // 2. Appeler dynamiquement la fonction de traitement
-        // CORRECTION: Utiliser la fonction helper
+        // 2. Récupérer la configuration du module
+        if ~isfield(app_state, 'modules') then
+            error('app_state.modules non defini');
+        end
+        
         module_config = get_module_config(current_key);
+        
+        if ~isfield(module_config, 'process_function') then
+            error('process_function non defini pour le module ' + current_key);
+        end
+        
         process_function_name = module_config.process_function;
         
         disp('Lancement traitement : ' + process_function_name + '()...');
         
-        // Utilisation de execstr au lieu de feval
+        // 3. Exécuter le traitement
         execstr(process_function_name + '()'); 
         
         disp('=== DEBUG : Fin generation ===');
@@ -103,7 +109,7 @@ function event_generate_results()
         end
         disp('======================');
         disp('');
-        update_interpretation_zone(error_message);
+        update_interpretation_zone('    ' + error_message);
         messagebox([error_message; ''; 'Voir console pour details'], 'Erreur', 'error');
     end
 endfunction
@@ -113,34 +119,25 @@ function read_interface_parameters()
     
     current_key = app_state.current_theme_key;
     
-    // CORRECTION: Utiliser la fonction helper
     module_config = get_module_config(current_key);
     
-    // Créer une copie des paramètres par défaut
     current_params = module_config.default_params;
     
-    // Parcourir les paramètres par clé et lire leur valeur dans l'UI
     param_names = fieldnames(current_params);
     
     for i = 1:size(param_names, 1)
         param_key = param_names(i);
         
-        // Lire la valeur du champ de saisie
         value = read_parameter_value(param_key); 
         
-        // Le bruit pour l'image est en % dans l'UI, mais en facteur (0-1) dans les params
-        if current_key == 'image' & param_key == 'salt_pepper_noise_percent' then
-            value = value / 100;
-            param_key_to_set = 'noise_level_factor';
-        else
-            param_key_to_set = param_key;
-        end
+        execstr("module_config.default_params." + param_key + " = value;");
         
-        // CORRECTION: Utiliser execstr pour modifier le paramètre
-        execstr("module_config.default_params." + param_key_to_set + " = value;");
+        if current_key == 'image' & param_key == 'salt_pepper_noise_percent' then
+            noise_factor = value / 100;
+            execstr("module_config.default_params.noise_level_factor = noise_factor;");
+        end
     end
     
-    // CORRECTION: Stocker avec la fonction helper
     set_module_config(current_key, module_config);
 endfunction
 

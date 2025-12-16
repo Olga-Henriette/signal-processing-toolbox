@@ -1,12 +1,31 @@
-// =========================================================================
-// Point d'entree 
-// =========================================================================
 clear; clc; close;
 
 disp('=========================================');
 disp('  Plateforme Traitement Signal   ');
 disp('=========================================');
 disp('');
+
+// Fonction de nettoyage des fichiers temporaires
+function cleanup_temp_files()
+    temp_dir = TMPDIR;
+    disp('Nettoyage des fichiers temporaires...');
+    
+    try
+        // Lister et supprimer les fichiers .tmp
+        temp_files = listfiles(temp_dir + '/*.tmp');
+        if ~isempty(temp_files) then
+            for i = 1:size(temp_files, 1)
+                mdelete(temp_files(i));
+            end
+            disp(sprintf('  %d fichiers temporaires supprimes.', size(temp_files, 1)));
+        end
+    catch
+        // Ignorer les erreurs (fichiers verrouillés, etc.)
+    end
+endfunction
+
+// Appeler au début
+cleanup_temp_files();
 
 // Déterminer le chemin du dossier source
 current_path = pwd();
@@ -45,18 +64,17 @@ exec('interface\events.sci', -1);
 disp('  -> interface/display.sci');
 exec('interface\display.sci', -1);
 
-// 4. Modules de traitement (chargement dynamique)
+// 4. Modules de traitement 
 disp('Chargement des modules de traitement dynamiques (dossier modules/)...');
 module_directory = 'modules\';
 
-// CORRECTION: listfiles() retourne déjà le chemin complet
 module_files = listfiles(module_directory + 'process_*.sci');
 
 if isempty(module_files) then
     disp('ATTENTION : Aucun module de traitement trouvé dans ' + module_directory);
 else
     for i = 1:size(module_files, 1)
-        full_path = module_files(i);  // listfiles retourne déjà le chemin complet
+        full_path = module_files(i);
         disp('  -> ' + full_path);
         exec(full_path, -1);
     end

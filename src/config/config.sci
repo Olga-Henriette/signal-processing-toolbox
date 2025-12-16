@@ -15,7 +15,7 @@ function values = get_field_values(s, field_name)
     for i = 1:size(names, 1)
         current_name = names(i);
         
-        // SOLUTION: Construire et exécuter la commande dynamiquement
+        //Construire et exécuter la commande dynamiquement
         cmd = "sub_struct = s." + current_name + ";";
         execstr(cmd);
         
@@ -46,7 +46,7 @@ app_state.ui_elements.button_generate = [];
 app_state.ui_elements.interpretation_zone = [];
 app_state.ui_elements.params_panel_frame = []; // Frame du panneau de paramètres
 
-// --- Configuration des Thèmes/Modules (Dynamique) ---
+// --- Configuration des Thèmes/Modules ---
 
 // Structure contenant tous les modules et leurs paramètres par défaut.
 app_state.modules = struct();
@@ -71,7 +71,8 @@ app_state.modules.image = struct(...
     'default_params', struct(...
         'blur_sigma', 3, ...
         'salt_pepper_noise_percent', 5, ... // 5 pour 5% de bruit
-        'median_filter_size', 3) ...
+        'median_filter_size', 3, ...
+        'noise_level_factor', 0.05) ...
 );
 
 // Module 3 : ECG
@@ -111,12 +112,11 @@ app_state.modules.radio = struct(...
 );
 
 // --- Liste des Thèmes pour l'UI ---
-// Ces listes sont générées à partir de app_state.modules
-app_state.theme_keys = fieldnames(app_state.modules); // Corrigé de struct_fieldnames
-app_state.theme_display_names = get_field_values(app_state.modules, 'display_name'); // Appel à la fonction
+app_state.theme_keys = fieldnames(app_state.modules); 
+app_state.theme_display_names = get_field_values(app_state.modules, 'display_name'); 
 // ---------------------------------
 
-// --- Configuration de l'interface (UI configuration) ---
+// --- Configuration de l'interface ---
 app_state.ui_config = struct(...
     'width', 1200, ...
     'height', 700, ...

@@ -16,7 +16,8 @@ function [frequencies, spectrum] = calculate_fft_spectrum(signal, sampling_frequ
     P1 = P2(1:floor(N/2)+1);
     
     // Multiplier par 2 pour les fréquences non nulles (théorème de Parseval)
-    P1(2:end-1) = 2 * P1(2:end-1);
+    P1(2:(end-1)) = 2 * P1(2:(end-1));
+
     
     // Normalisation par la longueur du signal
     spectrum = P1 / N;

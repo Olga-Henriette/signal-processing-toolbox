@@ -9,18 +9,16 @@ function [max_value, max_index]=find_maximum(vector)
 endfunction
 
 function output=modulo(a, b)
-    // Calcule le modulo (reste de la division euclidienne)
+    // Calcule le modulo
     output = a - b * floor(a/b);
 endfunction
 
-// calculer_mse est déplacée ici depuis le module image
 function mse=calculate_mse(img1, img2) 
     // Mean Squared Error (Erreur Quadratique Moyenne)
     diff_img = double(img1) - double(img2);
     mse = mean(diff_img.^2);
 endfunction
 
-// calculate_snr est déplacée ici depuis le module audio
 function snr_db=calculate_snr(clean_signal, noisy_signal)
     // Calcul du rapport Signal sur Bruit (SNR) en dB
     
